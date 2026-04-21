@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+cscoin-env/
+*.db
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Build artifacts
+build/
+*.o
+*.a
+
+# Local
+.env
+*.log
