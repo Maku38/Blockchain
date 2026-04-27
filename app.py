@@ -11,10 +11,17 @@ from agents.inventory_agent import check_equipment_availability, get_all_invento
 from agents.hod_agent import evaluate_override, override_booking, get_department_overview
 from blockchain.cscoin import log_booking_to_blockchain, get_blockchain_info, get_balance
 from logger import get_logger
+from flask_jwt_extended import JWTManager
+from auth import auth_bp
+import secrets
 
 logger = get_logger("app")
 app = Flask(__name__)
 CORS(app)
+app.config["JWT_SECRET_KEY"] = secrets.token_hex(32)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
+jwt = JWTManager(app)
+app.register_blueprint(auth_bp)
 init_db()
 
 # ─── Health ──────────────────────────────────────────────────────────────────
