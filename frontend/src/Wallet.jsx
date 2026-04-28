@@ -1,45 +1,9 @@
 import { useState, useEffect } from "react";
 
-const API = "http://localhost:5000/api";
+const API = "http://100.119.187.10:5000/api";
 const fmt = (n) => parseFloat(n || 0).toFixed(4);
 
-// ── Pure browser crypto, no libraries ────────────────────────────────────────
-function toHex(bytes) {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function encryptKey(privKeyHex, password) {
-  const enc = new TextEncoder();
-  const keyMat = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.deriveKey(
-    { name:"PBKDF2", salt, iterations:100000, hash:"SHA-256" },
-    keyMat, { name:"AES-GCM", length:256 }, false, ["encrypt"]
-  );
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, enc.encode(privKeyHex));
-  return JSON.stringify({ salt: toHex(salt), iv: toHex(iv), data: toHex(new Uint8Array(data)) });
-}
-
-async function decryptKey(encJson, password) {
-  const { salt, iv, data } = JSON.parse(encJson);
-  const fromHex = h => new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b,16)));
-  const enc = new TextEncoder();
-  const keyMat = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
-  const key = await crypto.subtle.deriveKey(
-    { name:"PBKDF2", salt:fromHex(salt), iterations:100000, hash:"SHA-256" },
-    keyMat, { name:"AES-GCM", length:256 }, false, ["decrypt"]
-  );
-  const dec = await crypto.subtle.decrypt({ name:"AES-GCM", iv:fromHex(iv) }, key, fromHex(data));
-  return new TextDecoder().decode(dec);
-}
-
-// Generate a random wallet ID (we use server-side address generation for simplicity)
-function generateKeyId() {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return toHex(bytes);
-}
+// All crypto operations moved to server for non-HTTPS compatibility
 
 // ── App ───────────────────────────────────────────────────────────────────────
 
@@ -173,10 +137,6 @@ export default function WalletApp() {
       if (ad.status !== "ok") { setError("Could not generate address"); setLoading(false); return; }
       const address = ad.address;
 
-      // Encrypt a key identifier locally
-      const keyId = generateKeyId();
-      const encrypted = await encryptKey(keyId, password);
-
       const r = await fetch(`${API}/auth/register`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ username, password, csc_address: address })
@@ -186,7 +146,6 @@ export default function WalletApp() {
 
       localStorage.setItem("csc_token", d.token);
       localStorage.setItem("csc_user", JSON.stringify(d.user));
-      localStorage.setItem(`csc_key_${username}`, encrypted);
       setToken(d.token); setUser(d.user);
       setScreen("wallet"); fetchBalance();
     } catch(e) { setError(e.message); }

@@ -52,9 +52,11 @@ def me():
 
 @auth_bp.route('/api/wallet/balance/<address>', methods=['GET'])
 def get_address_balance(address):
-    """Get balance for any CSC address using getreceivedbyaddress"""
+    """Get spendable balance using scantxoutset"""
     try:
-        balance = float(cli(["getreceivedbyaddress", address, "0"]))
+        result = json.loads(cli(["scantxoutset", "start",
+            json.dumps([{"desc": f"addr({address})"}])]))
+        balance = result.get("total_amount", 0.0)
         return jsonify({"status": "ok", "address": address, "balance": balance})
     except Exception as e:
         logger.error(f"Balance check failed for {address}: {e}")
